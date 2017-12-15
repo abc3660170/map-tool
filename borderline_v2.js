@@ -36,10 +36,9 @@ var testGeo = {
     }
 }
 var fc = JSON.parse(fs.readFileSync('./json/guizhou.json',{encoding:"utf8"}));
-
 var testGeoLine = turf.polygonToLine(testGeo);
 if(!fc.features || fc.features.length === 0) throw new Error("unvalid features!");
-for(var multippolygon = fc.features,i =  0; i < multippolygon.length; i++ ){
+for(var multippolygon = fc.features,i =  1; i < multippolygon.length; i++ ){
     if(booleanOverlap.call(null,multippolygon[i],testGeo)){
         /* 目标polygon和 互相切割成成线段*/
         var targetLines = [];
@@ -48,8 +47,12 @@ for(var multippolygon = fc.features,i =  0; i < multippolygon.length; i++ ){
         if(multiLineString.features){
             // multiploygon 的转换的多条线
             multiLineString.features.forEach(function(lineString){
-                targetLines.push(turf.lineSplit(lineString,testGeoLine))
-                geolines.push(turf.lineSplit(testGeoLine,lineString))
+                var shit = turf.lineIntersect(lineString,testGeoLine)
+                if(turf.lineIntersect(lineString,testGeoLine).features.length !== 0){
+                    targetLines = turf.lineSplit(lineString,testGeoLine).features
+                    geolines = turf.lineSplit(testGeoLine,lineString).features
+                    linkPolygon(multippolygon[i],testGeo,targetLines,geolines)
+                }
 
             })
         }else{
@@ -59,17 +62,60 @@ for(var multippolygon = fc.features,i =  0; i < multippolygon.length; i++ ){
 
     }
 }
-function dropCoveredLines(lineString){
 
+/**
+ * 返回不在切割区域内的线
+ * @param testGeo
+ * @param mainLines
+ * @returns {Array}
+ */
+function dropCoveredLines(testGeo,mainLines){
+    var filterLines = []
+    mainLines.forEach(function(line){
+        if(!turf.booleanContains(testGeo,line)){
+            filterLines.push(line)
+        }
+    })
+    return filterLines;
 }
 
-function linkPolygon(mainLines,cutLines){
-    var mainLines = dropCoveredLines(mainLines)
+/**
+ * 把切断的线重新连接到和之前不相交的多边形线
+ * @param mainF
+ * @param testF
+ * @param mainLines
+ * @param cutLines
+ * @returns {*}
+ */
+function linkPolygon(mainF,testF,mainLines,cutLines){
+   var mainLines = dropCoveredLines(testF,mainLines)
     mainLines.forEach(function (line) {
         cutLines.forEach(function(cutline){
-
+            var nextPoint = turf.point(cutline.geometry.coordinates[1]);
+            if( turf.booleanContains(mainF,nextPoint) && booleanLineLinked(line,cutline)){
+                var lineArray = line.geometry.coordinates[0];
+                var cutlineArray = cutline.geometry.coordinates[0];
+                // 这条切割线被切割图形内部
+                if(lineArray[0] == cutlineArray[0]){
+                    cutlineArray.reverse();
+                }
+                cutlineArray.pop();
+                lineArray.concat(cutlineArray)
+            }
         })
     })
+    return mainLines;
+}
+
+function booleanLineLinked(line1,line2){
+    var line1StartPoint =  line1.geometry.coordinates[0][1];
+    var line1EndPoint =  line1.geometry.coordinates[0][line1.geometry.coordinates[0].length - 1];
+    var line2StartPoint =  line2.geometry.coordinates[0][1];
+    var line2EndPoint =  line2.geometry.coordinates[0][line2.geometry.coordinates[0].length - 1];
+    if((line1StartPoint == line2StartPoint && line1EndPoint == line2EndPoint) || (line1StartPoint == line2EndPoint && line1EndPoint == line2StartPoint)){
+        return true;
+    }
+    return false;
 }
 
 /**
