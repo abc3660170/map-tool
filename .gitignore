@@ -1,0 +1,7 @@
+node_modules
+Thumbs.db
+.DS_Cache
+.idea
+.idea/inspectionProfiles/
+.idea/vcs.xml
+.idea/workspace.xml
