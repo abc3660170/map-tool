@@ -1,5 +1,8 @@
 var fs = require('fs');
 var turf = require('@turf/turf');
+var equals = require('array-almost-equal')
+
+
 var testGeo = {
     "type": "Feature",
     "properties": {},
@@ -40,25 +43,28 @@ var testGeoLine = turf.polygonToLine(testGeo);
 if(!fc.features || fc.features.length === 0) throw new Error("unvalid features!");
 for(var multippolygon = fc.features,i =  1; i < multippolygon.length; i++ ){
     if(booleanOverlap.call(null,multippolygon[i],testGeo)){
+        var multiPloygonsArray = []
         /* 目标polygon和 互相切割成成线段*/
         var targetLines = [];
         var geolines = [];
-        var multiLineString = turf.polygonToLine(multippolygon[i])
-        if(multiLineString.features){
-            // multiploygon 的转换的多条线
-            multiLineString.features.forEach(function(lineString){
-                var shit = turf.lineIntersect(lineString,testGeoLine)
-                if(turf.lineIntersect(lineString,testGeoLine).features.length !== 0){
-                    targetLines = turf.lineSplit(lineString,testGeoLine).features
-                    geolines = turf.lineSplit(testGeoLine,lineString).features
-                    linkPolygon(multippolygon[i],testGeo,targetLines,geolines)
-                }
-
-            })
+        if(multippolygon[i].geometry.type === 'MultiPolygon'){
+            multiPloygonsArray = turf.flatten(multippolygon[i]).features
         }else{
-            // ploygon 的转换的单条线
-            targetLines.push(turf.lineSplit(multiLineString,testGeoLine))
+            multiPloygonsArray = [multippolygon[i]];
         }
+
+        multiPloygonsArray.forEach(function (polygon) {
+            var lineString = turf.polygonToLine(polygon)
+            if(turf.lineIntersect(lineString,testGeoLine).features.length !== 0){
+                targetLines = targetLines.concat(turf.lineSplit(lineString,testGeoLine).features)
+                geolines = turf.lineSplit(testGeoLine,lineString).features
+                geolines = handleLines(polygon,geolines,true)
+                linkPolygon(polygon,testGeo,targetLines,geolines)
+            }else{
+                // multiPloygon中没有和目标对象相交的线段
+                targetLines = targetLines.concat([lineString])
+            }
+        })
 
     }
 }
@@ -69,14 +75,56 @@ for(var multippolygon = fc.features,i =  1; i < multippolygon.length; i++ ){
  * @param mainLines
  * @returns {Array}
  */
-function dropCoveredLines(testGeo,mainLines){
-    var filterLines = []
+function handleLines(testGeo,mainLines,reverse){
+    var reverse = reverse ? reverse : false;
+    var filterLines = [],resultLines = [],connect1,connect2;
+    // 过滤掉切割范围内的线段
     mainLines.forEach(function(line){
-        if(!turf.booleanContains(testGeo,line)){
+        if(reverse ? turf.booleanContains(testGeo,line):(!turf.booleanContains(testGeo,line))){
             filterLines.push(line)
         }
     })
-    return filterLines;
+    // 连接polygon转lineString时切割点的位置
+    for(var i = 0; i < filterLines.length; i++){
+        for(var j = i+1; j < filterLines.length; j++){
+            var line1 = filterLines[i].geometry.coordinates;
+            var line2 = filterLines[j].geometry.coordinates;
+            if(equals(line1[0],line2[0]) || equals(line1[0],line2[line2.length - 1]) || equals(line1[line1.length],line2[0]) || equals(line1[line1.length],line2[line1.length])){
+                connect1 = i;
+                connect2 = j;
+                break;
+            }
+        }
+    }
+    if(typeof connect1 !== 'undefined'){
+        var c1Coordinates = filterLines[connect1].geometry.coordinates;
+        var c2Coordinates = filterLines[connect2].geometry.coordinates;
+        if(equals(c1Coordinates[0],c2Coordinates[0])){
+            c1Coordinates.reverse();
+            c1Coordinates.pop();
+            filterLines[connect1].geometry.coordinates = c1Coordinates.concat(c2Coordinates)
+        }else if(equals(c1Coordinates[0],c2Coordinates[c2Coordinates.length - 1])){
+            c1Coordinates.reverse();
+            c1Coordinates.pop();
+            c2Coordinates.reverse();
+            filterLines[connect1].geometry.coordinates = c1Coordinates.concat(c2Coordinates)
+        }else if(equals(c1Coordinates[c1Coordinates.length - 1],c2Coordinates[0])){
+            c1Coordinates.pop();
+            filterLines[connect1].geometry.coordinates = c1Coordinates.concat(c2Coordinates)
+        }else{
+            c1Coordinates.pop();
+            c2Coordinates.reverse();
+            filterLines[connect1].geometry.coordinates = c1Coordinates.concat(c2Coordinates)
+        }
+        resultLines.push(filterLines[connect1])
+    }
+    for(var i = 0; i < filterLines.length; i++){
+        if(i !== connect1 && i !== connect2){
+            resultLines.push(filterLines[i])
+        }
+    }
+
+    return resultLines;
 }
 
 /**
@@ -88,7 +136,7 @@ function dropCoveredLines(testGeo,mainLines){
  * @returns {*}
  */
 function linkPolygon(mainF,testF,mainLines,cutLines){
-   var mainLines = dropCoveredLines(testF,mainLines)
+   var mainLines = handleLines(testF,mainLines)
     mainLines.forEach(function (line) {
         cutLines.forEach(function(cutline){
             var nextPoint = turf.point(cutline.geometry.coordinates[1]);
@@ -108,11 +156,11 @@ function linkPolygon(mainF,testF,mainLines,cutLines){
 }
 
 function booleanLineLinked(line1,line2){
-    var line1StartPoint =  line1.geometry.coordinates[0][1];
-    var line1EndPoint =  line1.geometry.coordinates[0][line1.geometry.coordinates[0].length - 1];
-    var line2StartPoint =  line2.geometry.coordinates[0][1];
-    var line2EndPoint =  line2.geometry.coordinates[0][line2.geometry.coordinates[0].length - 1];
-    if((line1StartPoint == line2StartPoint && line1EndPoint == line2EndPoint) || (line1StartPoint == line2EndPoint && line1EndPoint == line2StartPoint)){
+    var line1StartPoint =  line1.geometry.coordinates[0];
+    var line1EndPoint =  line1.geometry.coordinates[line1.geometry.coordinates[0].length - 1];
+    var line2StartPoint =  line2.geometry.coordinates[0];
+    var line2EndPoint =  line2.geometry.coordinates[line2.geometry.coordinates[0].length - 1];
+    if((equals(line1StartPoint,line2StartPoint) && equals(line1EndPoint,line2EndPoint)) || (equals(line1StartPoint,line2EndPoint) && equals(line1EndPoint,line2StartPoint))){
         return true;
     }
     return false;
