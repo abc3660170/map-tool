@@ -11,28 +11,20 @@ var testGeo = {
         "coordinates": [
             [
                 [
-                    106.0455322265625,
-                    26.382027976025352
+                    106.61132812499999,
+                    27.049341619870376
                 ],
                 [
-                    106.19384765625,
-                    26.33280692289788
+                    106.4794921875,
+                    26.77013508224145
                 ],
                 [
-                    106.4959716796875,
-                    26.480407161007275
+                    106.7926025390625,
+                    26.902476886279832
                 ],
                 [
-                    106.41357421875,
-                    26.696545111585152
-                ],
-                [
-                    106.20483398437499,
-                    26.539394329017032
-                ],
-                [
-                    106.0455322265625,
-                    26.382027976025352
+                    106.61132812499999,
+                    27.049341619870376
                 ]
             ]
         ]
@@ -41,8 +33,9 @@ var testGeo = {
 var fc = JSON.parse(fs.readFileSync('./json/guizhou.json',{encoding:"utf8"}));
 var testGeoLine = turf.polygonToLine(testGeo);
 if(!fc.features || fc.features.length === 0) throw new Error("unvalid features!");
+var newFeatures = []
 for(var multippolygon = fc.features,i =  0; i < multippolygon.length; i++ ){
-    if(booleanOverlap.call(null,multippolygon[i],testGeo)){
+    //if(booleanOverlap.call(null,multippolygon[i],testGeo)){
         var multiPloygonsArray = []
         /* 目标polygon和 互相切割成成线段*/
         var targetLines = [];
@@ -52,7 +45,8 @@ for(var multippolygon = fc.features,i =  0; i < multippolygon.length; i++ ){
         }else{
             multiPloygonsArray = [multippolygon[i]];
         }
-
+        var tempLinesArray = []
+        var newFeature = []
         multiPloygonsArray.forEach(function (polygon) {
             var lineString = turf.polygonToLine(polygon)
             if(turf.lineIntersect(lineString,testGeoLine).features.length !== 0){
@@ -60,15 +54,31 @@ for(var multippolygon = fc.features,i =  0; i < multippolygon.length; i++ ){
                 targetLines = targetLines.concat(tempLines.features)
                 geolines = turf.truncate(turf.lineSplit(testGeoLine,lineString),{precision: 6, coordinates: 2}).features
                 geolines = handleLines(polygon,geolines,true)
-                linkPolygon(polygon,testGeo,targetLines,geolines)
+                var polygonLines = linkPolygon(polygon,testGeo,targetLines,geolines)
+                polygonLines.forEach(function(line){
+                    tempLinesArray.push(line.geometry.coordinates)
+                })
             }else{
+                tempLinesArray.push(polygon.geometry.coordinates[0])
                 // multiPloygon中没有和目标对象相交的线段
-                targetLines = targetLines.concat([lineString])
+               // targetLines = targetLines.concat([lineString])
             }
         })
-
+    if(tempLinesArray.length > 1 ){
+        var multiLines = turf.lineToPolygon( turf.multiLineString(tempLinesArray))
+        multiLines.geometry.type = 'MultiPolygon'
+        multiLines.geometry.coordinates = [multiLines.geometry.coordinates]
+        newFeature.push(multiLines);
+    }else if(tempLinesArray.length === 1 ){
+        newFeature.push(turf.lineToPolygon( turf.lineString(tempLinesArray[0])));
+    }else{
+        throw new Error("has no polygons")
     }
+    newFeatures.push(newFeature[0])
+
+   // }
 }
+fs.writeFileSync('./out2.json',JSON.stringify(turf.featureCollection(newFeatures)),{encoding:"utf8"});
 
 /**
  * 返回不在切割区域内的线
