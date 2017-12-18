@@ -5,37 +5,49 @@ var equals = require('array-almost-equal')
 
 var testGeo = {
     "type": "Feature",
-    "properties": {},
+    "properties": {
+        "name":"贵安新区"
+    },
     "geometry": {
         "type": "Polygon",
         "coordinates": [
             [
                 [
-                    106.61132812499999,
-                    27.049341619870376
+                    106.0455322265625,
+                    26.382027976025352
                 ],
                 [
-                    106.4794921875,
-                    26.77013508224145
+                    106.19384765625,
+                    26.33280692289788
                 ],
                 [
-                    106.7926025390625,
-                    26.902476886279832
+                    106.4959716796875,
+                    26.480407161007275
                 ],
                 [
-                    106.61132812499999,
-                    27.049341619870376
+                    106.41357421875,
+                    26.696545111585152
+                ],
+                [
+                    106.20483398437499,
+                    26.539394329017032
+                ],
+                [
+                    106.0455322265625,
+                    26.382027976025352
                 ]
             ]
         ]
     }
 }
-var fc = JSON.parse(fs.readFileSync('./json/guizhou.json',{encoding:"utf8"}));
-var testGeoLine = turf.polygonToLine(testGeo);
-if(!fc.features || fc.features.length === 0) throw new Error("unvalid features!");
-var newFeatures = []
-for(var multippolygon = fc.features,i =  0; i < multippolygon.length; i++ ){
-    //if(booleanOverlap.call(null,multippolygon[i],testGeo)){
+//var fc = JSON.parse(fs.readFileSync('./json/guizhou.json',{encoding:"utf8"}));
+
+var getNewGeo = function(mainFeatures,testFeature){
+    var testGeoLine = turf.polygonToLine(testFeature);
+    if(!mainFeatures.features || mainFeatures.features.length === 0) throw new Error("unvalid features!");
+    // 最后输出的全新的 feartures数组
+    var newFeatures = []
+    for(var multippolygon = mainFeatures.features,i =  0; i < multippolygon.length; i++ ){
         var multiPloygonsArray = []
         /* 目标polygon和 互相切割成成线段*/
         var targetLines = [];
@@ -60,30 +72,38 @@ for(var multippolygon = fc.features,i =  0; i < multippolygon.length; i++ ){
                 })
             }else{
                 tempLinesArray.push(polygon.geometry.coordinates[0])
-                // multiPloygon中没有和目标对象相交的线段
-               // targetLines = targetLines.concat([lineString])
             }
         })
-    if(tempLinesArray.length > 1 ){
-        var multiLines = turf.lineToPolygon( turf.multiLineString(tempLinesArray))
-        multiLines.geometry.type = 'MultiPolygon'
-        multiLines.geometry.coordinates = [multiLines.geometry.coordinates]
-        newFeature.push(multiLines);
-    }else if(tempLinesArray.length === 1 ){
-        newFeature.push(turf.lineToPolygon( turf.lineString(tempLinesArray[0])));
-    }else{
-        throw new Error("has no polygons")
+        if(tempLinesArray.length > 1 ){
+            var multiLines = turf.lineToPolygon( turf.multiLineString(tempLinesArray))
+            multiLines.geometry.type = 'MultiPolygon'
+            multiLines.geometry.coordinates = [multiLines.geometry.coordinates]
+            newFeature.push(multiLines);
+        }else if(tempLinesArray.length === 1 ){
+            newFeature.push(turf.lineToPolygon( turf.lineString(tempLinesArray[0])));
+        }else{
+            throw new Error("has no polygons")
+        }
+        // properties 还原
+        newFeature[0].properties = multippolygon[i].properties;
+        newFeatures.push(newFeature[0])
     }
-    newFeatures.push(newFeature[0])
-
-   // }
+    // 加入新的 切割区域
+    newFeatures.push(testGeo)
+    fs.writeFileSync('./out2.json',JSON.stringify(turf.featureCollection(newFeatures)),{encoding:"utf8"});
 }
-fs.writeFileSync('./out2.json',JSON.stringify(turf.featureCollection(newFeatures)),{encoding:"utf8"});
+
+module.exports = {
+    getNewGeo:getNewGeo
+}
+
+
 
 /**
  * 返回不在切割区域内的线
- * @param testGeo
- * @param mainLines
+ * @param testGeo 切割体
+ * @param mainLines 被切割体拆分的线段
+ * @param reverse
  * @returns {Array}
  */
 function handleLines(testGeo,mainLines,reverse){
@@ -137,21 +157,20 @@ function handleLines(testGeo,mainLines,reverse){
 
     return resultLines;
 }
-
 /**
  * 把切断的线重新连接到和之前不相交的多边形线
- * @param mainF
- * @param testF
+ * @param mainPolygon
+ * @param testPolygon
  * @param mainLines
  * @param cutLines
- * @returns {*}
+ * @returns {Array}
  */
-function linkPolygon(mainF,testF,mainLines,cutLines){
-   var mainLines = handleLines(testF,mainLines)
+function linkPolygon(mainPolygon,testPolygon,mainLines,cutLines){
+   var mainLines = handleLines(testPolygon,mainLines)
     mainLines.forEach(function (line) {
         cutLines.forEach(function(cutline){
             var nextPoint = turf.point(cutline.geometry.coordinates[1]);
-            if( turf.booleanContains(mainF,nextPoint) && booleanLineLinked(line,cutline)){
+            if( turf.booleanContains(mainPolygon,nextPoint) && booleanLineLinked(line,cutline)){
                 var lineArray = line.geometry.coordinates;
                 var cutlineArray = cutline.geometry.coordinates;
                 // 这条切割线被切割图形内部
@@ -165,6 +184,12 @@ function linkPolygon(mainF,testF,mainLines,cutLines){
     return mainLines;
 }
 
+/**
+ *  判断2条线是否有相同的起点和终点
+ * @param line1
+ * @param line2
+ * @returns {boolean}
+ */
 function booleanLineLinked(line1,line2){
     var line1StartPoint =  line1.geometry.coordinates[0];
     var line1EndPoint =  line1.geometry.coordinates[line1.geometry.coordinates.length - 1];
@@ -176,60 +201,7 @@ function booleanLineLinked(line1,line2){
     return false;
 }
 
-/**
- * if multiPolygon and polygon
- * @param multiPolygon : targets
- * @param polygon :  targets
- * @returns {boolean}
- */
-function booleanOverlap(multiPolygon,polygon){
-    if(multiPolygon.geometry.type === 'MultiPolygon'){
-        // transform MultiPolygon to simply polygons
-        var polygonCollection = turf.flatten(multiPolygon)
-        for(var j = 0, polygons = polygonCollection.features ; j < polygons.length; j++){
-            if(turf.booleanOverlap(polygons[j],polygon)){
-                return true;
-            }
-        }
-        return false
-    }else if(multiPolygon.geometry.type === 'Polygon'){
-        if(turf.booleanOverlap(multiPolygon,polygon)){
-            return true;
-        }
-        return false;
-    }else{
-        throw new Error("target must be MultiPolygon or Polygon")
-    }
-}
 
-
-
-/**
- * boolean Polygon
- * @param ploygon
- * @returns {boolean}
- */
-function isMPolygon(ploygon){
-    if(ploygon.geometry && ploygon.geometry.type === 'Polygon'){
-        return true;
-    }else{
-        return false;
-    }
-}
-
-
-/**
- * boolean MultiPolygon
- * @param ploygon
- * @returns {boolean}
- */
-function isMultiPolygon(ploygon){
-    if(ploygon.geometry && ploygon.geometry.type === 'MultiPolygon'){
-        return true;
-    }else{
-        return false;
-    }
-}
 
 
 

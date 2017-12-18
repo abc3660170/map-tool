@@ -10,10 +10,13 @@
   "license": "ISC",
   "dependencies": {
     "array-almost-equal": "^1.0.0",
-    "jQuery": "^1.7.4",
-    "ol": "^4.6.4"
+    "bootstrap": "^4.0.0-beta.2",
+    "jquery": "^3.2.1",
+    "ol": "^4.6.4",
+    "popper.js": "^1.12.9"
   },
   "devDependencies": {
-    "@turf/turf": "^5.1.6"
+    "@turf/turf": "^5.1.6",
+    "express": "^4.16.2"
   }
 }

@@ -1,14 +1,24 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>贵安新区</title>
+    <link rel="stylesheet" href="../node_modules/bootstrap/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://openlayers.org/en/v4.6.4/css/ol.css" type="text/css">
     <script src="https://openlayers.org/en/v4.6.4/build/ol.js"></script>
     <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
 </head>
 <body>
-<div id="map" class="map"></div>
+<div class="" id="container">
+    <div class="row">
+        <div class="col-xl-3">
+            <div  id="map" class="map" ></div>
+        </div>
+        <div class="col-xl-1"></div>
+    </div>
+</div>
+
 <script>
     var image = new ol.style.Circle({
         radius: 5,
@@ -84,36 +94,33 @@
     var styleFunction = function(feature) {
         return styles[feature.getGeometry().getType()];
     };
-    //$.get({url:'https://github.com/johan/world.geo.json/blob/master/countries.geo.json',success:function(data){
-        //var geojsonObject = data;
-//        var vectorSource = new ol.source.Vector({
-//            features: (new ol.format.GeoJSON()).readFeatures(geojsonObject)
-//        });
-        var vectorSource = new ol.source.Vector({
-            format: new ol.format.GeoJSON(),
-            url:"./json/guizhou.json"
-        });
-        var vectorLayer = new ol.layer.Vector({
-            source: vectorSource,
-            style: styleFunction
-        });
+    var vectorSource = new ol.source.Vector({
+        format: new ol.format.GeoJSON(),
+        url:"../json/guizhou.json"
+    });
+    var vectorLayer = new ol.layer.Vector({
+        source: vectorSource,
+        style: styleFunction
+    });
 
-        var map = new ol.Map({
-            layers: [
-                new ol.layer.Tile({
-                    source: new ol.source.OSM()
-                }),
-                vectorLayer
-            ],
-            target: 'map',
-            view: new ol.View({
-                center: [0, 0],
-                zoom: 2
-            })
-        });
+    var map = new ol.Map({
+        layers: [
+            new ol.layer.Tile({
+                source: new ol.source.OSM()
+            }),
+            vectorLayer
+        ],
+        target: 'map',
+        view: new ol.View({
+            center: [0, 0],
+            zoom: 2
+        })
+    });
    // }})
 
 </script>
 </body>
-
+<script src="../node_modules/jquery/dist/jquery.slim.min.js"></script>
+<script src="../node_modules/popper.js/dist/umd/popper.min.js"></script>
+<script src="../node_modules/bootstrap/dist/js/bootstrap.min.js"></script>
 </html>
