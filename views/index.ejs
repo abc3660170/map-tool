@@ -23,14 +23,16 @@
                     <input type="file" id="originFile" name="originFile">
                 </div>
             </form>
+            <form action="/postTestFile" enctype="multipart/form-data" method="post" id="testForm">
             <div class="kv">
                 <label>新geojson文件：</label>
                 <select>
                     <option>上传文件</option>
                     <option>手绘</option>
                 </select>
-                <input type="file">
+                <input type="file" id="testFile" name="testFile">
             </div>
+            </form>
             <div class="buttonGroup">
                 <button>预览</button>
                 <button>下载</button>
@@ -44,6 +46,9 @@
         $(".row").height($(window).height())
         $("#originFile").on("change",function(){
             $("#originForm").submit()
+        })
+        $("#testFile").on("change",function(){
+            $("#testForm").submit()
         })
 
 
@@ -155,9 +160,25 @@
                 style: styleFunction
             });
             map.addLayer(vectorLayer)
+        $("#testForm").append("<input type='hidden' name='originFileName' value='<%= originFile %>'>")
 
         <% } %>
 
+        <% if(typeof testFile !== 'undefined') { %>
+        var vectorSource = new ol.source.Vector({
+            format: new ol.format.GeoJSON(),
+            useSpatialIndex:false,
+            url:'/uploads/<%= testFile %>'
+        });
+
+        var vectorLayer = new ol.layer.Vector({
+            source: vectorSource,
+            style: styleFunction
+        });
+        console.log(vectorSource.getFeaturesCollection())
+        map.addLayer(vectorLayer)
+
+        <% } %>
 
 
 
