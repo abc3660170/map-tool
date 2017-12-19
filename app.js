@@ -24,6 +24,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/scripts', express.static(__dirname + '/node_modules/bootstrap/dist/'));
 app.use('/scripts', express.static(__dirname + '/node_modules/popper.js/dist/'));
 app.use('/scripts', express.static(__dirname + '/node_modules/jquery/dist/'));
+app.use('/uploads', express.static(__dirname + '/uploads/'));
 
 app.use('/', routes);
 

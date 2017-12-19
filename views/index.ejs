@@ -12,9 +12,6 @@
 </head>
 <body>
 <div class="container-fluid" id="container">
-    <% if (originFile) { %>
-    <h2><%= originFile %></h2>
-    <% } %>
     <div class="row">
         <div class="col-9">
             <div  id="map" class="map" ></div>
@@ -133,20 +130,13 @@
         var styleFunction = function(feature) {
             return styles[feature.getGeometry().getType()];
         };
-        var vectorSource = new ol.source.Vector({
-            format: new ol.format.GeoJSON()
-        });
-        var vectorLayer = new ol.layer.Vector({
-            source: vectorSource,
-            style: styleFunction
-        });
+
 
         var map = new ol.Map({
             layers: [
                 new ol.layer.Tile({
                     source: new ol.source.OSM()
-                }),
-                vectorLayer
+                })
             ],
             target: 'map',
             view: new ol.View({
@@ -154,6 +144,24 @@
                 zoom: 2
             })
         });
+
+        <% if(typeof originFile !== 'undefined') { %>
+            var vectorSource = new ol.source.Vector({
+                format: new ol.format.GeoJSON(),
+                url:'/uploads/<%= originFile %>'
+            });
+            var vectorLayer = new ol.layer.Vector({
+                source: vectorSource,
+                style: styleFunction
+            });
+            map.addLayer(vectorLayer)
+
+        <% } %>
+
+
+
+
+
     })
 </script>
 </body>
