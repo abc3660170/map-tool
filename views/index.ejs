@@ -135,7 +135,10 @@
             return styles[feature.getGeometry().getType()];
         };
 
-
+        var viewer = new ol.View({
+            center: [0, 0],
+            zoom: 2
+        })
         var map = new ol.Map({
             layers: [
                 new ol.layer.Tile({
@@ -143,18 +146,22 @@
                 })
             ],
             target: 'map',
-            view: new ol.View({
-                center: [0, 0],
-                zoom: 2
-            })
+            view: viewer
         });
 
         <% if(typeof originFile !== 'undefined') { %>
             var  originSource = new ol.source.Vector({
                 format: new ol.format.GeoJSON(),
-                useSpatialIndex:false,
                 url:'/uploads/<%= originFile %>'
             });
+        originSource.on('change', function(evt){
+            var source=evt.target;
+            if(source.getState() === 'ready'){
+                var extent = originSource.getExtent();
+                viewer.fit(extent)
+            }
+        });
+            console.log(originSource.getFeatures())
             var originVectorLayer = new ol.layer.Vector({
                 source:  originSource,
                 style: styleFunction
