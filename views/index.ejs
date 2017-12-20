@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>贵安新区</title>
     <link rel="stylesheet" href="/scripts/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://openlayers.org/en/v4.6.4/css/ol.css" type="text/css">
-    <script src="https://openlayers.org/en/v4.6.4/build/ol.js"></script>
+    <link rel="stylesheet" href="/openlayers/ol.css">
+    <script src="/openlayers/ol-debug.js"></script>
     <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
     <link rel="stylesheet" href="css/index.css">
 </head>
@@ -34,8 +34,8 @@
             </div>
             </form>
             <div class="buttonGroup">
-                <button>预览</button>
-                <button>下载</button>
+                <button id="viewIt">预览</button>
+                <button id="downloadFile" style="display: none;">下载</button>
             </div>
         </div>
     </div>
@@ -88,21 +88,20 @@
             }),
             'MultiPolygon': new ol.style.Style({
                 stroke: new ol.style.Stroke({
-                    color: 'yellow',
-                    width: 1
+                    color: 'rgba(85, 85, 85, 1)',
+                    width: 2
                 }),
                 fill: new ol.style.Fill({
-                    color: 'rgba(255, 255, 0, 0.1)'
+                    color: 'rgba(85, 85, 85, 0.5)'
                 })
             }),
             'Polygon': new ol.style.Style({
                 stroke: new ol.style.Stroke({
-                    color: 'blue',
-                    lineDash: [4],
-                    width: 3
+                    color: 'rgba(85, 85, 85, 1)',
+                    width: 2
                 }),
                 fill: new ol.style.Fill({
-                    color: 'rgba(0, 0, 255, 0.1)'
+                    color: 'rgba(85, 85, 85, 0.5)'
                 })
             }),
             'GeometryCollection': new ol.style.Style({
@@ -151,34 +150,73 @@
         });
 
         <% if(typeof originFile !== 'undefined') { %>
-            var vectorSource = new ol.source.Vector({
+            var  originSource = new ol.source.Vector({
                 format: new ol.format.GeoJSON(),
+                useSpatialIndex:false,
                 url:'/uploads/<%= originFile %>'
             });
-            var vectorLayer = new ol.layer.Vector({
-                source: vectorSource,
+            var originVectorLayer = new ol.layer.Vector({
+                source:  originSource,
                 style: styleFunction
             });
-            map.addLayer(vectorLayer)
+            map.addLayer(originVectorLayer)
+            originFileName = '<%= originFile %>';
         $("#testForm").append("<input type='hidden' name='originFileName' value='<%= originFile %>'>")
 
         <% } %>
 
         <% if(typeof testFile !== 'undefined') { %>
-        var vectorSource = new ol.source.Vector({
+        var testSource = new ol.source.Vector({
             format: new ol.format.GeoJSON(),
             useSpatialIndex:false,
             url:'/uploads/<%= testFile %>'
         });
-
-        var vectorLayer = new ol.layer.Vector({
-            source: vectorSource,
+        testFileName = '<%= testFile %>';
+        var testVectorLayer = new ol.layer.Vector({
+            source: testSource,
             style: styleFunction
         });
-        console.log(vectorSource.getFeaturesCollection())
-        map.addLayer(vectorLayer)
-
+        map.addLayer(testVectorLayer)
         <% } %>
+
+        var newMapUrl;
+
+        $("#viewIt").on("click",function(){
+            $.ajax({
+                url:"/viewMap",
+                type:"POST",
+                data:{"originFileName":originFileName,"testFileName":testFileName},
+                success:function(data){
+                    newMapUrl = '/uploads/'+data
+                    $("#downloadFile").show();
+                    // var collection = new ol.Collection(data.features)
+                   // var formater = new ol.format.GeoJSON();
+                    //var collc = formater.readFeatures(data)
+                    var vectorSource = new ol.source.Vector({
+                        format: new ol.format.GeoJSON(),
+                        useSpatialIndex:false,
+                        url:newMapUrl
+                    });
+                    //vectorSource.addFeatures(collc)
+                    var vectorLayer = new ol.layer.Vector({
+                        source: vectorSource,
+                        style: styleFunction
+                    });
+                    map.removeLayer(testVectorLayer)
+                    map.removeLayer(originVectorLayer)
+                    map.addLayer(vectorLayer)
+                }
+            })
+        })
+
+        $("#downloadFile").on("click",function(){
+            window.open(newMapUrl)
+        })
+
+
+
+
+
 
 
 
@@ -186,7 +224,7 @@
     })
 </script>
 </body>
-<script src="/scripts/jquery.slim.min.js"></script>
+<script src="/scripts/jquery.min.js"></script>
 <script src="/scripts/umd/popper.min.js"></script>
 <script src="/scripts/js/bootstrap.min.js"></script>
 </html>
