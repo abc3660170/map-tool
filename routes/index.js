@@ -2,7 +2,7 @@ var express = require('express');
 var router = express.Router();
 var multer  = require('multer')
 var path = require('path')
-var mapTool = require("../borderline_v2.js");
+var mapTool = require("../src/borderline.js");
 var fs = require('fs');
 var uuid = require('uuid/v1');
 
