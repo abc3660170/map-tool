@@ -89,9 +89,10 @@ var getNewGeo = function(mainFeatures,testFeature){
         newFeatures.push(newFeature[0])
     }
     // 加入新的 切割区域
-    newFeatures.push(testGeo)
+    newFeatures.push(testFeature)
+    fs.writeFileSync('./out2.json',JSON.stringify(turf.featureCollection(newFeatures)),{encoding:"utf8"});
     return turf.featureCollection(newFeatures)
-    //fs.writeFileSync('./out2.json',JSON.stringify(turf.featureCollection(newFeatures)),{encoding:"utf8"});
+
 }
 
 module.exports = {

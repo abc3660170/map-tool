@@ -26,9 +26,9 @@
             <form action="/postTestFile" enctype="multipart/form-data" method="post" id="testForm">
             <div class="kv">
                 <label>新geojson文件：</label>
-                <select>
-                    <option>上传文件</option>
-                    <option>手绘</option>
+                <select id="type">
+                    <option value="upload">上传文件</option>
+                    <option value="draw">手绘</option>
                 </select>
                 <input type="file" id="testFile" name="testFile">
             </div>
@@ -40,106 +40,119 @@
         </div>
     </div>
 </div>
-
+<div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">增加必要信息</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="form-group">
+                        <label class="col-form-label" >名称:</label>
+                        <input type="text" class="form-control" id="geoName" name="name">
+                    </div>
+                    <div class="form-group">
+                        <label class="col-form-label" id="geoName">中心点经纬度:</label>
+                        <input type="text" class="form-control" id="lonlat" name="cp">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
+                <button type="button" class="btn btn-primary">确认</button>
+            </div>
+        </div>
+    </div>
+</div>
 <script>
-    $(document).ready(function(){
-        $(".row").height($(window).height())
-        $("#originFile").on("change",function(){
-            $("#originForm").submit()
-        })
-        $("#testFile").on("change",function(){
-            $("#testForm").submit()
-        })
+    var map
+    var image = new ol.style.Circle({
+        radius: 5,
+        fill: null,
+        stroke: new ol.style.Stroke({color: 'red', width: 1})
+    });
 
-
-
-
-
-
-
-
-
-
-
-        var image = new ol.style.Circle({
-            radius: 5,
-            fill: null,
-            stroke: new ol.style.Stroke({color: 'red', width: 1})
-        });
-
-        var styles = {
-            'Point': new ol.style.Style({
-                image: image
+    var styles = {
+        'Point': new ol.style.Style({
+            image: image
+        }),
+        'LineString': new ol.style.Style({
+            stroke: new ol.style.Stroke({
+                color: 'green',
+                width: 1
+            })
+        }),
+        'MultiLineString': new ol.style.Style({
+            stroke: new ol.style.Stroke({
+                color: 'green',
+                width: 1
+            })
+        }),
+        'MultiPoint': new ol.style.Style({
+            image: image
+        }),
+        'MultiPolygon': new ol.style.Style({
+            stroke: new ol.style.Stroke({
+                color: 'rgba(85, 85, 85, 1)',
+                width: 2
             }),
-            'LineString': new ol.style.Style({
+            fill: new ol.style.Fill({
+                color: 'rgba(85, 85, 85, 0.5)'
+            })
+        }),
+        'Polygon': new ol.style.Style({
+            stroke: new ol.style.Stroke({
+                color: 'rgba(85, 85, 85, 1)',
+                width: 2
+            }),
+            fill: new ol.style.Fill({
+                color: 'rgba(85, 85, 85, 0.5)'
+            })
+        }),
+        'GeometryCollection': new ol.style.Style({
+            stroke: new ol.style.Stroke({
+                color: 'magenta',
+                width: 2
+            }),
+            fill: new ol.style.Fill({
+                color: 'magenta'
+            }),
+            image: new ol.style.Circle({
+                radius: 10,
+                fill: null,
                 stroke: new ol.style.Stroke({
-                    color: 'green',
-                    width: 1
-                })
-            }),
-            'MultiLineString': new ol.style.Style({
-                stroke: new ol.style.Stroke({
-                    color: 'green',
-                    width: 1
-                })
-            }),
-            'MultiPoint': new ol.style.Style({
-                image: image
-            }),
-            'MultiPolygon': new ol.style.Style({
-                stroke: new ol.style.Stroke({
-                    color: 'rgba(85, 85, 85, 1)',
-                    width: 2
-                }),
-                fill: new ol.style.Fill({
-                    color: 'rgba(85, 85, 85, 0.5)'
-                })
-            }),
-            'Polygon': new ol.style.Style({
-                stroke: new ol.style.Stroke({
-                    color: 'rgba(85, 85, 85, 1)',
-                    width: 2
-                }),
-                fill: new ol.style.Fill({
-                    color: 'rgba(85, 85, 85, 0.5)'
-                })
-            }),
-            'GeometryCollection': new ol.style.Style({
-                stroke: new ol.style.Stroke({
-                    color: 'magenta',
-                    width: 2
-                }),
-                fill: new ol.style.Fill({
                     color: 'magenta'
-                }),
-                image: new ol.style.Circle({
-                    radius: 10,
-                    fill: null,
-                    stroke: new ol.style.Stroke({
-                        color: 'magenta'
-                    })
-                })
-            }),
-            'Circle': new ol.style.Style({
-                stroke: new ol.style.Stroke({
-                    color: 'red',
-                    width: 2
-                }),
-                fill: new ol.style.Fill({
-                    color: 'rgba(255,0,0,0.2)'
                 })
             })
-        };
-
-        var styleFunction = function(feature) {
-            return styles[feature.getGeometry().getType()];
-        };
+        }),
+        'Circle': new ol.style.Style({
+            stroke: new ol.style.Stroke({
+                color: 'red',
+                width: 2
+            }),
+            fill: new ol.style.Fill({
+                color: 'rgba(255,0,0,0.2)'
+            })
+        })
+    };
+    var currentFeature;
+    var currentAction = 'view';
+    var originSource;
+    var testSource;
+    var styleFunction = function(feature) {
+        return styles[feature.getGeometry().getType()];
+    };
+    $(document).ready(function(){
 
         var viewer = new ol.View({
             center: [0, 0],
             zoom: 2
         })
-        var map = new ol.Map({
+        map = new ol.Map({
             layers: [
                 new ol.layer.Tile({
                     source: new ol.source.OSM()
@@ -149,19 +162,39 @@
             view: viewer
         });
 
+        map.on("click",function(e){
+            currentFeature = map.forEachFeatureAtPixel(e.pixel,function(feature){
+                return feature
+            })
+            var properties = currentFeature.getProperties()
+            $('.modal input').val("");
+            $('.modal [name=name]').val(properties.name)
+            $('.modal [name=cp]').val(properties.cp)
+            if(currentAction === 'view'){
+                $(".modal").modal('show')
+            }
+
+        })
+        $("body").on("click",".btn-primary",function(){
+            var attrs = {}
+            attrs['name'] = $('.modal [name=name]').val()
+            attrs['cp'] = $('.modal [name=cp]').val().split(",")
+            currentFeature.setProperties(attrs)
+            $(".modal").modal('hide')
+        })
         <% if(typeof originFile !== 'undefined') { %>
-            var  originSource = new ol.source.Vector({
+        originSource = new ol.source.Vector({
                 format: new ol.format.GeoJSON(),
-                url:'/uploads/<%= originFile %>'
+                url:'/uploads/<%= originFile %>',
             });
         originSource.on('change', function(evt){
             var source=evt.target;
             if(source.getState() === 'ready'){
                 var extent = originSource.getExtent();
                 viewer.fit(extent)
+                map.updateSize()
             }
         });
-            console.log(originSource.getFeatures())
             var originVectorLayer = new ol.layer.Vector({
                 source:  originSource,
                 style: styleFunction
@@ -173,7 +206,7 @@
         <% } %>
 
         <% if(typeof testFile !== 'undefined') { %>
-        var testSource = new ol.source.Vector({
+        testSource = new ol.source.Vector({
             format: new ol.format.GeoJSON(),
             useSpatialIndex:false,
             url:'/uploads/<%= testFile %>'
@@ -187,24 +220,34 @@
         <% } %>
 
         var newMapUrl;
+        $(".row").height($(window).height())
+        $("#originFile").on("change",function(){
+            $("#originForm").submit()
+        })
+        $("#testFile").on("change",function(){
+            $("#testForm").submit()
+        })
 
+
+
+
+        // 预览
         $("#viewIt").on("click",function(){
+            var formater = new ol.format.GeoJSON();
+            var originGeo = formater.writeFeatures(originSource.getFeatures())
+            var testGeo = formater.writeFeatures(testSource.getFeatures())
             $.ajax({
                 url:"/viewMap",
                 type:"POST",
-                data:{"originFileName":originFileName,"testFileName":testFileName},
+                dataType:'json',
+                data:{"originGeo":originGeo,"testGeo":testGeo},
                 success:function(data){
-                    newMapUrl = '/uploads/'+data
                     $("#downloadFile").show();
-                    // var collection = new ol.Collection(data.features)
-                   // var formater = new ol.format.GeoJSON();
-                    //var collc = formater.readFeatures(data)
                     var vectorSource = new ol.source.Vector({
-                        format: new ol.format.GeoJSON(),
+                        format: formater,
                         useSpatialIndex:false,
-                        url:newMapUrl
+                        features: formater.readFeatures(data)
                     });
-                    //vectorSource.addFeatures(collc)
                     var vectorLayer = new ol.layer.Vector({
                         source: vectorSource,
                         style: styleFunction
@@ -219,16 +262,73 @@
         $("#downloadFile").on("click",function(){
             window.open(newMapUrl)
         })
-
-
-
-
-
-
-
-
+       var drawLayer = drawFunc(map)
+        var typeSelect = document.getElementById('type');
+        typeSelect.onchange = function() {
+            console.log(1)
+            if(typeSelect.value === 'draw'){
+                drawLayer(true)
+            }else{
+                drawLayer(false)
+            }
+        };
 
     })
+
+
+    function drawFunc(map){
+        var source = new ol.source.Vector({wrapX: false});
+        // var vector = new ol.layer.Vector({
+        //     source: source
+        // });
+        // map.addLayer(vector)
+
+
+        var draw; // global so we can remove it later
+        var drawed;
+
+        function addInteraction() {
+            draw = new ol.interaction.Draw({
+                source: source,
+                type: 'Polygon'
+            });
+            draw.on("drawstart",function(){
+                map.removeLayer(drawed)
+
+            })
+            draw.on("drawend",function(drawer){
+                currentFeature = drawer.feature;
+                var source = new ol.source.Vector({
+                    features:[currentFeature],
+                    useSpatialIndex:false,
+                    format:new ol.format.GeoJSON({"defaultDataProjection":"EPSG:3857"})
+                })
+                drawed = new ol.layer.Vector({
+                    source:source,
+                    style:styleFunction
+                })
+                map.addLayer(drawed)
+
+            })
+            map.addInteraction(draw);
+
+        }
+        return function(param,options){
+            if(typeof param === 'boolean'){
+                // 控制地图开关
+                if(param){
+                    currentAction = 'draw'
+                    map.removeInteraction(draw);
+                    addInteraction();
+                }else{
+                    currentAction = 'view'
+                    map.removeInteraction(draw);
+                }
+            }else if(param === "get"){
+
+            }
+        }
+    }
 </script>
 </body>
 <script src="/scripts/jquery.min.js"></script>

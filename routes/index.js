@@ -19,18 +19,14 @@ router.post('/postTestFile',upload.single('testFile'), function(req, res, next) 
 });
 
 router.post('/viewMap', function(req, res, next) {
-    var newMapName = uuid()+".json"
-    if(generateMap.call(null,req.body.originFileName,req.body.testFileName,newMapName))
-        res.send(newMapName)
+    var originGeoObject = JSON.parse(req.body.originGeo)
+    var testGeoObject = JSON.parse(req.body.testGeo)
+    var newFeatures = generateMap.call(null,originGeoObject,testGeoObject)
+    res.send(newFeatures)
 });
 
-function generateMap(OriginFilename,testFilename,fileName) {
-    var originFile = JSON.parse(fs.readFileSync("./uploads/"+OriginFilename,{encode:"utf-8"}));
-    var testFile = JSON.parse(fs.readFileSync("./uploads/"+testFilename,{encode:"utf-8"}));
-    var newGeo = mapTool.getNewGeo(originFile,testFile)
-    var data  = JSON.stringify(newGeo)
-    fs.writeFileSync("./uploads/"+fileName,data,{encoding:"utf8"});
-    return true;
+function generateMap(OriginFeatures,testFeatures) {
+    return mapTool.getNewGeo(OriginFeatures,testFeatures.features[0])
 }
 
 module.exports = router;
