@@ -21,12 +21,17 @@ router.post('/postTestFile',upload.single('testFile'), function(req, res, next) 
 router.post('/viewMap', function(req, res, next) {
     var originGeoObject = JSON.parse(req.body.originGeo)
     var testGeoObject = JSON.parse(req.body.testGeo)
-    var newFeatures = generateMap.call(null,originGeoObject,testGeoObject)
+    if(testGeoObject.features){
+       var polygon = testGeoObject.features[0]
+    }else{
+       var polygon = testGeoObject
+    }
+    var newFeatures = generateMap.call(null,originGeoObject,polygon)
     res.send(newFeatures)
 });
 
-function generateMap(OriginFeatures,testFeatures) {
-    return mapTool.getNewGeo(OriginFeatures,testFeatures.features[0])
+function generateMap(OriginFeatures,testFeature) {
+    return mapTool.getNewGeo(OriginFeatures,testFeature)
 }
 
 module.exports = router;

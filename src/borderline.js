@@ -2,44 +2,6 @@ var fs = require('fs');
 var turf = require('@turf/turf');
 var equals = require('array-almost-equal')
 
-
-var testGeo = {
-    "type": "Feature",
-    "properties": {
-        "name":"贵安新区"
-    },
-    "geometry": {
-        "type": "Polygon",
-        "coordinates": [
-            [
-                [
-                    106.0455322265625,
-                    26.382027976025352
-                ],
-                [
-                    106.19384765625,
-                    26.33280692289788
-                ],
-                [
-                    106.4959716796875,
-                    26.480407161007275
-                ],
-                [
-                    106.41357421875,
-                    26.696545111585152
-                ],
-                [
-                    106.20483398437499,
-                    26.539394329017032
-                ],
-                [
-                    106.0455322265625,
-                    26.382027976025352
-                ]
-            ]
-        ]
-    }
-}
 //var fc = JSON.parse(fs.readFileSync('./json/guizhou.json',{encoding:"utf8"}));
 
 var getNewGeo = function(mainFeatures,testFeature){
@@ -66,7 +28,7 @@ var getNewGeo = function(mainFeatures,testFeature){
                 targetLines = targetLines.concat(tempLines.features)
                 geolines = turf.truncate(turf.lineSplit(testGeoLine,lineString),{precision: 6, coordinates: 2}).features
                 geolines = handleLines(polygon,geolines,true)
-                var polygonLines = linkPolygon(polygon,testGeo,targetLines,geolines)
+                var polygonLines = linkPolygon(polygon,testFeature,targetLines,geolines)
                 polygonLines.forEach(function(line){
                     tempLinesArray.push(line.geometry.coordinates)
                 })
@@ -90,7 +52,7 @@ var getNewGeo = function(mainFeatures,testFeature){
     }
     // 加入新的 切割区域
     newFeatures.push(testFeature)
-    fs.writeFileSync('./out2.json',JSON.stringify(turf.featureCollection(newFeatures)),{encoding:"utf8"});
+    //fs.writeFileSync('out2.json',JSON.stringify(turf.featureCollection(newFeatures)),{encoding:"utf8"});
     return turf.featureCollection(newFeatures)
 
 }

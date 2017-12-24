@@ -143,6 +143,8 @@
     var currentAction = 'view';
     var originSource;
     var testSource;
+    var testVectorLayer;
+    var originVectorLayer
     var styleFunction = function(feature) {
         return styles[feature.getGeometry().getType()];
     };
@@ -166,6 +168,7 @@
             currentFeature = map.forEachFeatureAtPixel(e.pixel,function(feature){
                 return feature
             })
+            if(!currentFeature) return
             var properties = currentFeature.getProperties()
             $('.modal input').val("");
             $('.modal [name=name]').val(properties.name)
@@ -195,7 +198,7 @@
                 map.updateSize()
             }
         });
-            var originVectorLayer = new ol.layer.Vector({
+            originVectorLayer = new ol.layer.Vector({
                 source:  originSource,
                 style: styleFunction
             });
@@ -212,7 +215,7 @@
             url:'/uploads/<%= testFile %>'
         });
         testFileName = '<%= testFile %>';
-        var testVectorLayer = new ol.layer.Vector({
+        testVectorLayer = new ol.layer.Vector({
             source: testSource,
             style: styleFunction
         });
@@ -234,8 +237,9 @@
         // 预览
         $("#viewIt").on("click",function(){
             var formater = new ol.format.GeoJSON();
-            var originGeo = formater.writeFeatures(originSource.getFeatures())
-            var testGeo = formater.writeFeatures(testSource.getFeatures())
+            var originGeo = formater.writeFeatures(originSource.getFeatures(),{dataProjection:"EPSG:4326",featureProjection:"EPSG:3857"})
+            var testGeo = formater.writeFeature(currentFeature,{dataProjection:"EPSG:4326",featureProjection:"EPSG:3857"})
+           // var testGeo = formater.writeFeature(currentFeature,{dataProjection:"EPSG:4326",featureProjection:"EPSG:3857"})
             $.ajax({
                 url:"/viewMap",
                 type:"POST",
@@ -243,10 +247,10 @@
                 data:{"originGeo":originGeo,"testGeo":testGeo},
                 success:function(data){
                     $("#downloadFile").show();
+                    var formater = new ol.format.GeoJSON();
                     var vectorSource = new ol.source.Vector({
                         format: formater,
-                        useSpatialIndex:false,
-                        features: formater.readFeatures(data)
+                        features: formater.readFeatures(data,{dataProjection:"EPSG:4326",featureProjection:"EPSG:3857"})
                     });
                     var vectorLayer = new ol.layer.Vector({
                         source: vectorSource,
