@@ -25,7 +25,7 @@ var getNewGeo = function(mainFeatures,testFeature){
             var lineString = turf.polygonToLine(polygon)
             if(turf.lineIntersect(lineString,testGeoLine).features.length !== 0){
                 var tempLines = turf.truncate(turf.lineSplit(lineString,testGeoLine),{precision: 6, coordinates: 2})
-                targetLines = targetLines.concat(tempLines.features)
+                targetLines = handleLines(testFeature,targetLines.concat(tempLines.features))
                 geolines = turf.truncate(turf.lineSplit(testGeoLine,lineString),{precision: 6, coordinates: 2}).features
                 geolines = handleLines(polygon,geolines,true)
                 var polygonLines = linkPolygon(polygon,testFeature,targetLines,geolines)
