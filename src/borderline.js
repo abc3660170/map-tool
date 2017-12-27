@@ -28,10 +28,7 @@ var getNewGeo = function(mainFeatures,testFeature){
                 targetLines = handleLines(testFeature,targetLines.concat(tempLines.features))
                 geolines = turf.truncate(turf.lineSplit(testGeoLine,lineString),{precision: 6, coordinates: 2}).features
                 geolines = handleLines(polygon,geolines,true)
-                var polygonLines = linkPolygon(polygon,testFeature,targetLines,geolines)
-                polygonLines.forEach(function(line){
-                    tempLinesArray.push(line.geometry.coordinates)
-                })
+                tempLinesArray = linkPolygonCoords(polygon,testFeature,targetLines,geolines)
             }else{
                 tempLinesArray.push(polygon.geometry.coordinates[0])
             }
@@ -52,7 +49,7 @@ var getNewGeo = function(mainFeatures,testFeature){
     }
     // 加入新的 切割区域
     newFeatures.push(testFeature)
-    //fs.writeFileSync('out2.json',JSON.stringify(turf.featureCollection(newFeatures)),{encoding:"utf8"});
+    fs.writeFileSync('out2.json',JSON.stringify(turf.featureCollection(newFeatures)),{encoding:"utf8"});
     return turf.featureCollection(newFeatures)
 
 }
@@ -129,7 +126,66 @@ function handleLines(testGeo,mainLines,reverse){
  * @param cutLines
  * @returns {Array}
  */
-function linkPolygon(mainPolygon,testPolygon,mainLines,cutLines){
+function linkPolygonCoords(mainPolygon,testPolygon,mainLines,cutLines){
+    var allLines = mainLines.concat(cutLines),
+        resultLines = [],
+        linked = false,
+        currentLineArray = [];
+
+    for(var i = 0; i <  allLines.length; i++ ){
+        currentLineArray.push(allLines[i].geometry.coordinates)
+    }
+    return nestedLink(currentLineArray);
+
+    /**
+     *
+     * @param prevLines
+     * @param currentLine
+     */
+    function nestedLink(currentLineArray){
+        var nextLineArray = [];
+        for(var i = 0; i < currentLineArray.length; i++){
+            for(var j = i+1; j < currentLineArray.length; j++){
+                var lineArray = currentLineArray[i];
+                var lineArrayAfter = currentLineArray[j];
+                if(equals(lineArray[0],lineArrayAfter[0])){
+                    lineArray.reverse();
+                    nextLineArray.push(lineArray.concat(lineArrayAfter))
+                    linked = true
+                }else if(equals(lineArray[0],lineArrayAfter[lineArrayAfter.length - 1])){
+                    nextLineArray.push(lineArrayAfter.concat(lineArray))
+                    linked = true
+                }else if(equals(lineArray[lineArray.length - 1],lineArrayAfter[0])){
+                    nextLineArray.push(lineArray.concat(lineArrayAfter))
+                    linked = true
+                }else if(equals(lineArray[lineArray.length - 1],lineArrayAfter[lineArrayAfter.length - 1])){
+                    lineArrayAfter.reverse();
+                    nextLineArray.push(lineArray.concat(lineArrayAfter))
+                    linked = true
+                }
+                if(linked){
+                    for(var k = 0; k < currentLineArray.length; k++){
+                        if(k !== i && k !== j){
+                            nextLineArray.push(currentLineArray[k])
+                        }
+                    }
+                    // if(prevLineArray){
+                    //     var prevLineFirst = turf.lineString(prevLineArray[0])
+                    //     var nextLineFirst = turf.lineString(nextLineArray[0])
+                    //     if(turf.booleanEqual(prevLineFirst,nextLineFirst)){
+                    //         linesCoord.push(nextLineArray.shift())
+                    //     }
+                    // }
+                    linked = false;
+                    return nestedLink(nextLineArray)
+                }
+                // if(j === currentLineArray.length - 1 && i === j - 1){
+                //     return linesCoord
+                // }
+            }
+        }
+        return currentLineArray;
+    }
    var mainLines = handleLines(testPolygon,mainLines)
     mainLines.forEach(function (line) {
         cutLines.forEach(function(cutline){
@@ -159,7 +215,7 @@ function booleanLineLinked(line1,line2){
     var line1EndPoint =  line1.geometry.coordinates[line1.geometry.coordinates.length - 1];
     var line2StartPoint =  line2.geometry.coordinates[0];
     var line2EndPoint =  line2.geometry.coordinates[line2.geometry.coordinates.length - 1];
-    if((equals(line1StartPoint,line2StartPoint) && equals(line1EndPoint,line2EndPoint)) || (equals(line1StartPoint,line2EndPoint) && equals(line1EndPoint,line2StartPoint))){
+    if((equals(line1StartPoint,line2StartPoint) || equals(line1EndPoint,line2EndPoint)) || (equals(line1StartPoint,line2EndPoint) || equals(line1EndPoint,line2StartPoint))){
         return true;
     }
     return false;
