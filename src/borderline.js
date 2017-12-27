@@ -36,7 +36,11 @@ var getNewGeo = function(mainFeatures,testFeature){
         if(tempLinesArray.length > 1 ){
             var multiLines = turf.lineToPolygon( turf.multiLineString(tempLinesArray))
             multiLines.geometry.type = 'MultiPolygon'
-            multiLines.geometry.coordinates = [multiLines.geometry.coordinates]
+            var coordinates = []
+            multiLines.geometry.coordinates.forEach(group =>{
+                coordinates.push([group])
+            })
+            multiLines.geometry.coordinates = coordinates
             newFeature.push(multiLines);
         }else if(tempLinesArray.length === 1 ){
             newFeature.push(turf.lineToPolygon( turf.lineString(tempLinesArray[0])));

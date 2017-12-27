@@ -141,10 +141,12 @@
     };
     var currentFeature;
     var currentAction = 'view';
+    var baseSource;
     var originSource;
     var testSource;
     var testVectorLayer;
-    var originVectorLayer
+    var originVectorLayer;
+    var combinedLayer;
     var styleFunction = function(feature) {
         return styles[feature.getGeometry().getType()];
     };
@@ -165,6 +167,7 @@
         });
 
         map.on("click",function(e){
+            if(currentAction !== 'view') return;
             currentFeature = map.forEachFeatureAtPixel(e.pixel,function(feature){
                 return feature
             })
@@ -193,6 +196,7 @@
         originSource.on('change', function(evt){
             var source=evt.target;
             if(source.getState() === 'ready'){
+                baseSource = originSource.getFeatures();
                 var extent = originSource.getExtent();
                 viewer.fit(extent)
                 map.updateSize()
@@ -234,10 +238,12 @@
 
 
 
+
+
         // 预览
         $("#viewIt").on("click",function(){
             var formater = new ol.format.GeoJSON();
-            var originGeo = formater.writeFeatures(originSource.getFeatures(),{dataProjection:"EPSG:4326",featureProjection:"EPSG:3857"})
+            var originGeo = formater.writeFeatures(baseSource,{dataProjection:"EPSG:4326",featureProjection:"EPSG:3857"})
             var testGeo = formater.writeFeature(currentFeature,{dataProjection:"EPSG:4326",featureProjection:"EPSG:3857"})
            // var testGeo = formater.writeFeature(currentFeature,{dataProjection:"EPSG:4326",featureProjection:"EPSG:3857"})
             $.ajax({
@@ -248,17 +254,19 @@
                 success:function(data){
                     $("#downloadFile").show();
                     var formater = new ol.format.GeoJSON();
+                    map.removeLayer(testVectorLayer)
+                    map.removeLayer(originVectorLayer)
+                    map.removeLayer(combinedLayer)
+                    baseSource = formater.readFeatures(data,{dataProjection:"EPSG:4326",featureProjection:"EPSG:3857"})
                     var vectorSource = new ol.source.Vector({
                         format: formater,
-                        features: formater.readFeatures(data,{dataProjection:"EPSG:4326",featureProjection:"EPSG:3857"})
+                        features: baseSource
                     });
-                    var vectorLayer = new ol.layer.Vector({
+                    combinedLayer = new ol.layer.Vector({
                         source: vectorSource,
                         style: styleFunction
                     });
-                    map.removeLayer(testVectorLayer)
-                    map.removeLayer(originVectorLayer)
-                    map.addLayer(vectorLayer)
+                    map.addLayer(combinedLayer)
                 }
             })
         })
@@ -307,11 +315,11 @@
                     useSpatialIndex:false,
                     format:new ol.format.GeoJSON({"defaultDataProjection":"EPSG:3857"})
                 })
-                drawed = new ol.layer.Vector({
+                testVectorLayer = new ol.layer.Vector({
                     source:source,
                     style:styleFunction
                 })
-                map.addLayer(drawed)
+                map.addLayer(testVectorLayer)
 
             })
             map.addInteraction(draw);
