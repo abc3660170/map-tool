@@ -29,7 +29,7 @@ var getNewGeo = function(mainFeatures,testFeature){
                 geolines = turf.truncate(turf.lineSplit(testGeoLine,lineString),{precision: 6, coordinates: 2}).features
                 geolines = handleLines(polygon,geolines,true)
                 tempLinesArray = tempLinesArray.concat(linkPolygonCoords(polygon,testFeature,targetLines,geolines))
-            }else{
+            }else if(!turf.booleanContains(testFeature,polygon)){
                 tempLinesArray.push(polygon.geometry.coordinates[0])
             }
         })
@@ -44,12 +44,12 @@ var getNewGeo = function(mainFeatures,testFeature){
             newFeature.push(multiLines);
         }else if(tempLinesArray.length === 1 ){
             newFeature.push(turf.lineToPolygon( turf.lineString(tempLinesArray[0])));
-        }else{
-            throw new Error("has no polygons")
         }
         // properties 还原
-        newFeature[0].properties = multippolygon[i].properties;
-        newFeatures.push(newFeature[0])
+        if(newFeature.length > 0){
+            newFeature[0].properties = multippolygon[i].properties;
+            newFeatures.push(newFeature[0])
+        }
     }
     // 加入新的 切割区域
     newFeatures.push(testFeature)
