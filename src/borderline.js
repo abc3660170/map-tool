@@ -28,7 +28,7 @@ var getNewGeo = function(mainFeatures,testFeature){
                 targetLines = handleLines(testFeature,targetLines.concat(tempLines.features))
                 geolines = turf.truncate(turf.lineSplit(testGeoLine,lineString),{precision: 6, coordinates: 2}).features
                 geolines = handleLines(polygon,geolines,true)
-                tempLinesArray = linkPolygonCoords(polygon,testFeature,targetLines,geolines)
+                tempLinesArray = tempLinesArray.concat(linkPolygonCoords(polygon,testFeature,targetLines,geolines))
             }else{
                 tempLinesArray.push(polygon.geometry.coordinates[0])
             }
@@ -53,8 +53,11 @@ var getNewGeo = function(mainFeatures,testFeature){
     }
     // 加入新的 切割区域
     newFeatures.push(testFeature)
-    fs.writeFileSync('out2.json',JSON.stringify(turf.featureCollection(newFeatures)),{encoding:"utf8"});
-    return turf.featureCollection(newFeatures)
+    fs.writeFileSync('./uploads/out.json',JSON.stringify(turf.featureCollection(newFeatures)),{encoding:"utf8"});
+    return {
+        geojson:turf.featureCollection(newFeatures),
+        file:"/uploads/out.json"
+    }
 
 }
 

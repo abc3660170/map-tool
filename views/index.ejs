@@ -218,6 +218,12 @@
             useSpatialIndex:false,
             url:'/uploads/<%= testFile %>'
         });
+        testSource.on('change', function(evt){
+            var source=evt.target;
+            if(source.getState() === 'ready'){
+                currentFeature = (testSource.getFeatures())[0];
+            }
+        });
         testFileName = '<%= testFile %>';
         testVectorLayer = new ol.layer.Vector({
             source: testSource,
@@ -234,12 +240,6 @@
         $("#testFile").on("change",function(){
             $("#testForm").submit()
         })
-
-
-
-
-
-
         // 预览
         $("#viewIt").on("click",function(){
             var formater = new ol.format.GeoJSON();
@@ -253,11 +253,12 @@
                 data:{"originGeo":originGeo,"testGeo":testGeo},
                 success:function(data){
                     $("#downloadFile").show();
+                    $("#downloadFile").attr("file",data.file);
                     var formater = new ol.format.GeoJSON();
                     map.removeLayer(testVectorLayer)
                     map.removeLayer(originVectorLayer)
                     map.removeLayer(combinedLayer)
-                    baseSource = formater.readFeatures(data,{dataProjection:"EPSG:4326",featureProjection:"EPSG:3857"})
+                    baseSource = formater.readFeatures(data.geojson,{dataProjection:"EPSG:4326",featureProjection:"EPSG:3857"})
                     var vectorSource = new ol.source.Vector({
                         format: formater,
                         features: baseSource
@@ -272,7 +273,7 @@
         })
 
         $("#downloadFile").on("click",function(){
-            window.open(newMapUrl)
+            window.open($(this).attr("file"))
         })
        var drawLayer = drawFunc(map)
         var typeSelect = document.getElementById('type');
